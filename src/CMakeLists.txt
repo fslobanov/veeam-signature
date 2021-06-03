@@ -1,4 +1,4 @@
-set( target_name signature-generator )
+set( target_name veeam-signature )
 add_executable( ${target_name} )
 
 target_include_directories( ${target_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} )
@@ -9,11 +9,13 @@ if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
 elseif( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
 	set( build_flags "-march=native -Wall -Wextra ${build_flags}" )
 else()
-
+	message( SEND_ERROR "Unknown compiler: ${CMAKE_CXX_COMPILER_ID}" )
 endif()
+set_target_properties( ${target_name} PROPERTIES COMPILE_FLAGS ${build_flags} )
 
 target_link_libraries(
-		${target_name}
+		${target_name} PRIVATE
+
 		Threads::Threads
 
 		Boost::system
@@ -25,8 +27,6 @@ target_link_libraries(
 
 		spdlog::spdlog_header_only
 )
-
-set_target_properties( ${target_name} PROPERTIES COMPILE_FLAGS ${build_flags} )
 
 target_sources(
 		${target_name} PRIVATE

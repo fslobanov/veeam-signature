@@ -1,12 +1,16 @@
 cmake_minimum_required( VERSION 3.11 )
 project( veeam-signature
          VERSION 1.0
-         DESCRIPTION  "Command line signature generator"
+         DESCRIPTION "Command line signature generator"
          HOMEPAGE_URL "https://github.com/fslobanov/veeam-signature"
          LANGUAGES "CXX" )
 
-if( NOT UNIX )
-	message( SEND_ERROR "Only linux is supported" )
+if( NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" )
+	message( SEND_ERROR "veeam-signature: Only x86_64 arch supported, but current arch is '${CMAKE_SYSTEM_PROCESSOR}'" )
+endif()
+
+if( NOT UNIX OR NOT CMAKE_SYSTEM_NAME STREQUAL "Linux" )
+	message( SEND_ERROR "veeam-signature: Only Linux OS supported, but current OS is '${CMAKE_SYSTEM_NAME}'" )
 endif()
 
 set( CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/artifacts" CACHE STRING "runtime output directory" )
