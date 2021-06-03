@@ -17,7 +17,7 @@ namespace fs = boost::filesystem;
 
 namespace {
 
-const std::map< boost::string_view, std::size_t > g_multipliers = {
+const std::vector< std::pair< boost::string_view, std::size_t > > g_multipliers = {
     { "kb",  1000 },
     { "kib", 1024UL },
     { "mb",  std::pow( 1000UL, 2 ) },
@@ -136,45 +136,19 @@ arguments_t parser_t::operator ()( int argument_count, char ** arguments ) noexc
 
 std::size_t parser_t::parse_chunk_size( boost::string_view string ) noexcept( false )
 {
-    std::size_t multiplier = 1;
-    std::size_t count = 0;
+    const auto found = std::find_if(
+        g_multipliers.begin(), g_multipliers.end(),
+        [ &string ]( const decltype( g_multipliers )::value_type & entry ) noexcept
+        {
+            return string.ends_with( entry.first );
+        }
+    );
     
-    if( string.ends_with( "kb" ) )
+    if( found != g_multipliers.end() )
     {
-        multiplier = 1000UL;
-        count = parse_digits( string, 2 );
+        return found->second * parse_digits( string, found->first.size() );
     }
-    else if( string.ends_with( "kib" ) )
-    {
-        multiplier = 1024UL;
-        count = parse_digits( string, 3 );
-    }
-    else if( string.ends_with( "mb" ) )
-    {
-        multiplier = 1000UL * 1000UL;
-        count = parse_digits( string, 2 );
-    }
-    else if( string.ends_with( "mib" ) )
-    {
-        multiplier = 1024UL * 1024UL;
-        count = parse_digits( string, 3 );
-    }
-    else if( string.ends_with( "gb" ) )
-    {
-        multiplier = 1000UL * 1000UL * 1000UL;
-        count = parse_digits( string, 2 );
-    }
-    else if( string.ends_with( "gib" ) )
-    {
-        multiplier = 1024UL * 1024UL * 1024UL;
-        count = parse_digits( string, 3 );
-    }
-    else
-    {
-        count = parse_digits( string, 0 );
-    }
-    
-    return multiplier * count;
+    return parse_digits( string, 0 );
 }
 
 std::size_t parser_t::parse_digits( boost::string_view string, std::size_t suffix_size ) noexcept( false )
