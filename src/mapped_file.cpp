@@ -27,7 +27,12 @@ mapped_file_t::mapped_file_t( const boost::filesystem::path & path, std::size_t 
     {
         throw std::runtime_error( fmt::format( "failed to open input file '{}'", path.string() ) );
     }
+    
     memory = mmap( nullptr, bytes, PROT_READ, MAP_PRIVATE, descriptor, 0 );
+    if( MAP_FAILED == memory )
+    {
+        throw std::runtime_error( fmt::format( "failed to mmap input file '{}': {}", path.string(), std::strerror( errno ) ) );
+    }
     
     std::size_t approximate_block_size = bytes / block_count;
     while( approximate_block_size < chunk_size && block_count > 1 )
@@ -78,7 +83,10 @@ mapped_file_t::~mapped_file_t() noexcept
 {
     if( memory )
     {
-        munmap( memory, bytes );
+        if( -1 == munmap( memory, bytes ) )
+        {
+            spdlog::error( "Failed to unmap file: {}", std::strerror( errno ) );
+        }
     }
 }
 
