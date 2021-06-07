@@ -37,7 +37,7 @@ private:
     std::vector< entry_t > storage;
     
     void * memory;
-    std::size_t bytes;
+    std::size_t file_size;
 };
 
 };

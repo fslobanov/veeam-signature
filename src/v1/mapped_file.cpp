@@ -12,15 +12,15 @@ namespace signature {
 
 mapped_file_t::mapped_file_t( const boost::filesystem::path & path, std::size_t block_count, std::size_t chunk_size ) noexcept( false )
     : memory( nullptr )
-      , bytes( 0 )
+      , file_size( 0 )
 {
     boost::system::error_code ec;
-    bytes = boost::filesystem::file_size( path, ec );
+    file_size = boost::filesystem::file_size( path, ec );
     if( ec )
     {
         throw std::runtime_error( fmt::format( "failed to retrieve input file '{}' size: {}", path.string(), ec.message() ) );
     }
-    spdlog::info( "Input file '{}' size is: {} bytes", path.string(), bytes );
+    spdlog::info( "Input file '{}' size is: {} bytes", path.string(), file_size );
     
     auto descriptor = open( path.string().data(), O_RDONLY );
     if( -1 == descriptor )
@@ -28,23 +28,23 @@ mapped_file_t::mapped_file_t( const boost::filesystem::path & path, std::size_t 
         throw std::runtime_error( fmt::format( "failed to open input file '{}'", path.string() ) );
     }
     
-    memory = mmap( nullptr, bytes, PROT_READ, MAP_PRIVATE, descriptor, 0 );
+    memory = mmap( nullptr, file_size, PROT_READ, MAP_PRIVATE, descriptor, 0 );
     if( MAP_FAILED == memory )
     {
         throw std::runtime_error( fmt::format( "failed to mmap input file '{}': {}", path.string(), std::strerror( errno ) ) );
     }
     
-    std::size_t approximate_block_size = bytes / block_count;
+    std::size_t approximate_block_size = file_size / block_count;
     while( approximate_block_size < chunk_size && block_count > 1 )
     {
         --block_count;
-        approximate_block_size = bytes / block_count;
+        approximate_block_size = file_size / block_count;
     }
     
     spdlog::info(
         "Memory start - {}, memory end - {}, approximate block size - {} bytes",
         fmt::ptr( memory ),
-        fmt::ptr( as_bytes( memory ) + bytes ),
+        fmt::ptr( as_bytes( memory ) + file_size ),
         approximate_block_size
     );
     
@@ -60,7 +60,7 @@ mapped_file_t::mapped_file_t( const boost::filesystem::path & path, std::size_t 
         current_block_start = as_bytes( current_block_start ) + block_size + 1;
     }
     
-    const std::size_t tail_block_size = as_bytes( as_bytes( memory ) + bytes ) - as_bytes( current_block_start );
+    const std::size_t tail_block_size = as_bytes( as_bytes( memory ) + file_size ) - as_bytes( current_block_start );
     storage.emplace_back( block_t{ block_count - 1, current_block_start, tail_block_size, chunk_size } );
     
     for( const auto & entry : storage )
@@ -74,7 +74,7 @@ mapped_file_t::mapped_file_t( const boost::filesystem::path & path, std::size_t 
         );
     }
     
-    assert( ( as_bytes( memory ) + bytes
+    assert( ( as_bytes( memory ) + file_size
               == as_bytes( storage.back().block.memory ) + storage.back().block.size )
             && "Memory end mismatch" );
 }
@@ -83,7 +83,7 @@ mapped_file_t::~mapped_file_t() noexcept
 {
     if( memory )
     {
-        if( -1 == munmap( memory, bytes ) )
+        if( -1 == munmap( memory, file_size ) )
         {
             spdlog::error( "Failed to unmap file: {}", std::strerror( errno ) );
         }

@@ -34,4 +34,5 @@ struct block_t final
     std::size_t chunks_count() const noexcept;
     std::size_t tail_size() const noexcept;
 };
+
 }
