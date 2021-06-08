@@ -26,7 +26,7 @@ const std::vector< std::pair< boost::string_view, std::size_t > > g_multipliers 
     { "gib", std::pow( 1024UL, 3 ) }
 };
 
-constexpr std::size_t g_max_chunk_size = 1000UL * 1000UL * 1000UL * 8UL;
+constexpr std::size_t g_max_chunk_size = 1000UL * 1000UL * 1000UL * 1UL;
 constexpr std::size_t g_min_chunk_size = 64000UL;
 
 }

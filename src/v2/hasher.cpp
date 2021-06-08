@@ -13,35 +13,35 @@ segment_hasher_t::hash_t segment_hasher_t::operator ()( segment_t && segment ) c
 {
     const auto chunks_count = segment.chunk_count;
     const auto tail_size = segment.tail_size;
-    const auto result_size = ( chunks_count + ( tail_size ? 1 : 0 ) ) * sizeof( uint32_t );
+    const auto hash_size = ( chunks_count + ( tail_size ? 1 : 0 ) ) * sizeof( uint32_t );
     
     spdlog::info(
-        "Block '{}' segment hashing started, first chunk - '{}', expected size - {} bytes",
+        "Block '{}' segment hashing started, first chunk - '{}', hash size - {} bytes",
         segment.block_id,
         segment.first_chunk_id,
-        result_size );
-    
-    //TODO inplace memory hashing instead allocation
-    auto hash = std::make_unique< byte_t[] >( result_size );
+        hash_size );
+   
+    auto hash = std::make_unique< byte_t[] >( hash_size );
     
     std::size_t current_chunk = 0;
     for( std::size_t index = 0; index < chunks_count; ++index )
     {
-        hash[ index * sizeof( uint32_t ) ] = compute_crc32( &segment.memory[ current_chunk ], segment.chunk_size );
+        const auto crc = compute_crc32( &segment.memory[ current_chunk ], segment.chunk_size );
+        std::memcpy( &hash[ index * sizeof( uint32_t ) ], &crc, sizeof( crc ) );
         current_chunk += segment.chunk_size;
     }
     
     if( tail_size )
     {
-        hash[ chunks_count * sizeof( uint32_t ) ] = compute_crc32( &segment.memory[ current_chunk ], tail_size );
+        const auto crc = compute_crc32( &segment.memory[ current_chunk ], tail_size );
+        std::memcpy( &hash[ chunks_count * sizeof( uint32_t ) ], &crc, sizeof( crc ) );
     }
     
     spdlog::info( "Block '{}' hashing finished, first chunk - '{}'", segment.block_id, segment.first_chunk_id );
-    //spdlog::info( "Block '{}' hash: {}", block.block_id, result );
     return { segment.block_id,
              segment.first_chunk_id,
              chunks_count,
-             result_size,
+             hash_size,
              std::move( hash ) };
 }
 
@@ -62,7 +62,6 @@ segment_hasher_t::crc32_t segment_hasher_t::compute_crc32( const void * memory, 
     for( std::size_t index = 0; index < tail_size; ++index )
     {
         crc = _mm_crc32_u8( crc, *reinterpret_cast< const uint8_t * >( chunk ) );
-        chunk = as_bytes( chunk ) + 1;
     }
     
     return crc;

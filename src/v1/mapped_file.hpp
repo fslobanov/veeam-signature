@@ -26,6 +26,7 @@ public:
 public:
     std::size_t block_count() const noexcept;
     const block_t * get_block( block_id_t block_id ) const noexcept;
+    std::size_t get_size() const noexcept;
 
 private:
     struct entry_t final

@@ -11,7 +11,9 @@
 
 signed main( int argument_count, char ** arguments ) noexcept
 {
+    const auto start_timestamp = std::chrono::high_resolution_clock::now();
     const auto cpu_core_count = std::thread::hardware_concurrency();
+    
     try
     {
         auto args = signature::parser_t{}( argument_count, arguments );
@@ -37,6 +39,11 @@ signed main( int argument_count, char ** arguments ) noexcept
             args.output_path.string(),
             boost::filesystem::file_size( args.output_path, ignored )
         );
+        
+        const auto elapsed = std::chrono::high_resolution_clock::now() - start_timestamp;
+        const auto seconds_elapsed = std::chrono::duration_cast< std::chrono::duration< float > >( elapsed );
+        const auto throughput = ( static_cast< double >( mapped_file.get_size() ) / ( 1000 * 1000 ) ) / seconds_elapsed.count();
+        spdlog::info( "Elapsed - {:.2f} seconds, throughput is {:.2f} Mb/sec", seconds_elapsed.count(), throughput );
     }
     catch ( const std::exception & exception )
     {

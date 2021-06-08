@@ -61,7 +61,6 @@ block_hasher_t::crc32_t block_hasher_t::compute_crc32( const void * memory, std:
     for( std::size_t index = 0; index < tail_size; ++index )
     {
         crc = _mm_crc32_u8( crc, *reinterpret_cast< const uint8_t * >( chunk ) );
-        chunk = as_bytes( chunk ) + 1;
     }
     
     return crc;

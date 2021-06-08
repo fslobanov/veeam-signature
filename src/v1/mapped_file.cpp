@@ -104,6 +104,11 @@ const block_t * mapped_file_t::get_block( block_id_t block_id ) const noexcept
     return nullptr;
 }
 
+std::size_t mapped_file_t::get_size() const noexcept
+{
+    return file_size;
+}
+
 mapped_file_t::entry_t::entry_t( block_t && block ) noexcept
     : block( std::move( block ) )
 {

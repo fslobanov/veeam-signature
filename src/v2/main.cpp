@@ -15,7 +15,9 @@
 
 signed main( int argument_count, char ** arguments ) noexcept
 {
+    const auto start_timestamp = std::chrono::high_resolution_clock::now();
     const auto cpu_core_count = std::thread::hardware_concurrency();
+    
     try
     {
         auto args = signature2::parser_t{}( argument_count, arguments );
@@ -31,7 +33,7 @@ signed main( int argument_count, char ** arguments ) noexcept
         spdlog::info( "Signature of '{}' will be split on {} block ..", args.input_path.string(), block_file.block_count() );
         
         boost::asio::io_context context;
-        const auto stop_context = [ &context ]() noexcept
+        const auto shutdown_context = [ &context ]() noexcept
         {
             std::thread thread{
                 [ &context ]() noexcept
@@ -45,12 +47,12 @@ signed main( int argument_count, char ** arguments ) noexcept
         
         signature2::writer_t writer{
             block_file, boost::asio::io_context::strand{ context }, args.output_path,
-            [ &stop_context, &args, &context ]( signature2::writer_t::result_t && result ) noexcept( false )
+            [ &shutdown_context, &args, &context ]( signature2::writer_t::result_t && result ) noexcept( false )
             {
                 if( auto success = boost::get< signature2::writer_t::success_t >( &result ) )
                 {
                     ( void ) success;
-                    stop_context();
+                    shutdown_context();
                 }
                 else if( auto ec = boost::get< signature2::writer_t::error_t >( &result ) )
                 {
@@ -112,7 +114,7 @@ signed main( int argument_count, char ** arguments ) noexcept
             block_readers.back()();
         }
         
-        auto thread_worker = [ &context, &stop_context, &occurred_exception ]( std::size_t core_index ) noexcept
+        auto thread_worker = [ &context, &shutdown_context, &occurred_exception ]( std::size_t core_index ) noexcept
         {
             cpu_set_t cpu_mask;
             CPU_ZERO( &cpu_mask );
@@ -131,13 +133,13 @@ signed main( int argument_count, char ** arguments ) noexcept
             catch ( const std::exception & exception )
             {
                 std::atomic_store( &occurred_exception, std::make_shared< std::exception_ptr >( std::current_exception() ) );
-                stop_context();
+                shutdown_context();
             }
             catch ( ... )
             {
                 spdlog::error( "Unknown error occurred" );
                 std::atomic_store( &occurred_exception, std::make_shared< std::exception_ptr >( std::current_exception() ) );
-                stop_context();
+                shutdown_context();
             }
         };
         
@@ -164,6 +166,11 @@ signed main( int argument_count, char ** arguments ) noexcept
             args.output_path.string(),
             boost::filesystem::file_size( args.output_path, ignored )
         );
+        
+        const auto elapsed = std::chrono::high_resolution_clock::now() - start_timestamp;
+        const auto seconds_elapsed = std::chrono::duration_cast< std::chrono::duration< float > >( elapsed );
+        const auto throughput = ( static_cast< double >( block_file.get_size() ) / ( 1000 * 1000 ) ) / seconds_elapsed.count();
+        spdlog::info( "Elapsed - {:.2f} seconds, throughput is {:.2f} Mb/sec", seconds_elapsed.count(), throughput );
     }
     catch ( const std::exception & exception )
     {

@@ -8,9 +8,11 @@
 namespace signature2 {
 
 block_file_t::block_file_t( const boost::filesystem::path & path, std::size_t block_count, std::size_t chunk_size )
+    : path( path )
+    , file_size( 0 )
 {
     boost::system::error_code ec;
-    const auto file_size = boost::filesystem::file_size( path, ec );
+    file_size = boost::filesystem::file_size( path, ec );
     if( ec )
     {
         throw std::runtime_error( fmt::format( "failed to retrieve input file '{}' size: {}", path.string(), ec.message() ) );
@@ -56,7 +58,7 @@ block_file_t::block_file_t( const boost::filesystem::path & path, std::size_t bl
         );
     }
     
-    assert( file_size
+    assert( size
             == ( storage.back().block.offset + storage.back().block.size )
             && "Memory end mismatch" );
 }
@@ -73,6 +75,16 @@ const block_t * block_file_t::get_block( block_id_t block_id ) const noexcept
         return &storage[ block_id ].block;
     }
     return nullptr;
+}
+
+const boost::filesystem::path & block_file_t::get_path() const noexcept
+{
+    return path;
+}
+
+std::size_t block_file_t::get_size() const noexcept
+{
+    return file_size;
 }
 
 block_file_t::entry_t::entry_t( block_t && block ) noexcept

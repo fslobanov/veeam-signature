@@ -23,7 +23,9 @@ block_reader_t::block_reader_t( boost::asio::io_context::strand && strand,
       , descriptor( 0 )
       , offset( 0 )
 {
-    descriptor = open( path.c_str(), O_RDONLY );
+    
+    //TODO use O_DIRECT, but read buffer alignment is required
+    descriptor = open( path.c_str(), O_RDONLY /*| O_DIRECT */ );
     if( -1 == descriptor )
     {
         throw std::runtime_error( fmt::format(
@@ -79,10 +81,10 @@ void block_reader_t::do_read() noexcept
     }
     
     assert( offset <= block.size );
-    const auto remaining = block.size - offset;
+    const auto rest = block.size - offset;
     
     // reading full segment
-    if( remaining > segment_size )
+    if( rest > segment_size )
     {
         read_segment();
         return;
@@ -91,10 +93,10 @@ void block_reader_t::do_read() noexcept
     //reading tail
     boost::asio::post(
         strand.context(),
-        [ this, remaining ]() noexcept
+        [ this, rest ]() noexcept
         {
-            auto buffer = std::make_unique< byte_t[] >( remaining );
-            if( -1 == read( descriptor, buffer.get(), remaining ) )
+            auto buffer = std::make_unique< byte_t[] >( rest );
+            if( -1 == read( descriptor, buffer.get(), rest ) )
             {
                 callback( std::strerror( errno ) );
                 return;
@@ -103,8 +105,8 @@ void block_reader_t::do_read() noexcept
             segment_t segment{
                 block.block_id,
                 block.chunk_size,
-                remaining / block.chunk_size,
-                remaining % block.chunk_size,
+                rest / block.chunk_size,
+                rest % block.chunk_size,
                 offset / block.chunk_size,
                 std::move( buffer )
             };
